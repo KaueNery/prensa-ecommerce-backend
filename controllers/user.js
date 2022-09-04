@@ -4,6 +4,18 @@ const Cart = require('../models/cart');
 const Coupon = require('../models/coupon');
 const Order = require('../models/order');
 
+
+exports.getUser = async (req,res) => {
+  const user = await User.findOne({email: req.user.email})
+      .populate('email addressInfo')
+      .exec();
+
+  const {email, addressInfo} = user;
+  console.log("USER ------>  " + email + addressInfo);
+  res.json({email, addressInfo});
+
+};
+
 exports.userCart = async (req, res) => {
     const { cart } = req.body;
 
@@ -69,12 +81,25 @@ exports.emptyCart = async (req, res) => {
 };
 
 exports.saveAddress = async (req, res) => {
-    const userAddress = await User.findOneAndUpdate(
-        {email: req.user.email},
-        {address: req.body.address}
-    ) .exec();
-    
-    res.json({ ok: true });
+  try{
+    console.log("SAVING ADDRESS ------------------------");
+    console.log(JSON.stringify(req.body.address))
+    console.log(JSON.stringify(req.user.email))
+    let addressInfo = JSON.stringify(req.body.address);
+      const userAddress = await User.findOneAndUpdate(
+          {email: req.user.email},
+          { addressInfo },
+          { new: true }
+      ) .exec();
+      
+      res.json({ ok: true });
+    }
+    catch (err) {
+      console.log('ADDRESS UPDATE ERROR: ', err);
+      res.status(400).json({
+          err: err.message,
+      });
+  }
 };
 
 exports.applyCouponToUserCart = async (req, res) => {
@@ -115,7 +140,7 @@ exports.applyCouponToUserCart = async (req, res) => {
   };
 
   exports.createOrder = async (req,res) => {
-    const {paymentIntent} = req.body.stripeResponse.paymentIntent;
+    const { paymentIntent } = req.body.stripeResponse;
     const user = await User.findOne({email: req.user.email}).exec();
 
     let { products } = await Cart.findOne({orderedBy: user._id}).exec();
